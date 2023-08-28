@@ -62,6 +62,7 @@ Resources:
               #!/bin/bash
               set -e
               cd /home/ec2-user/SageMaker
+              sudo chown ec2-user:ec2-user /home/ec2-user/SageMaker -R
               git clone --recurse-submodules -j8 ${GithubRepo}
 # END NOTEBOOK -------------------------------------------------
 
