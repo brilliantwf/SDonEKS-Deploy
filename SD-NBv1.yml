@@ -62,9 +62,9 @@ Resources:
               #!/bin/bash
               set -e
               cd /home/ec2-user/SageMaker
-              sudo chown ec2-user:ec2-user /home/ec2-user/SageMaker -R
               git clone --recurse-submodules -j8 ${GithubRepo}
               echo "c.NotebookApp.terminado_settings={'shell_command': ['/bin/bash']}" | tee -a /home/ec2-user/.jupyter/jupyter_notebook_config.py >/dev/null
+              sudo chown -R ec2-user:ec2-user /home/ec2-user/SageMaker
               sudo systemctl restart jupyter-server --no-block
 # END NOTEBOOK -------------------------------------------------
 
