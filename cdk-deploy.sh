@@ -3,4 +3,4 @@ git clone --recurse-submodules https://PRIVATE_TOKEN@github.com/bnusunny/stable-
 cd ~/SageMaker/SDonEKS-Deploy/stable-diffusion-on-eks
 npm install
 cdk bootstrap
-cdk deploy --all
+cdk deploy --all —no-rollback
