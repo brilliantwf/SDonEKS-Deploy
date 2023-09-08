@@ -1,0 +1,261 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Working with custom resources and S3 for sdoneks solution
+
+Metadata:
+  License:
+    Description: |
+      Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+      Permission is hereby granted, free of charge, to any person obtaining a copy of this
+      software and associated documentation files (the "Software"), to deal in the Software
+      without restriction, including without limitation the rights to use, copy, modify,
+      merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+      permit persons to whom the Software is furnished to do so.
+
+      THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+      INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+      PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+      HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+      OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+      SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups: 
+      - 
+        Label: 
+          default: "S3 Configuration"
+        Parameters:
+          - BucketName
+          - DirsToCreate
+      - 
+        Label: 
+          default: "EFS Configuration"
+        Parameters: 
+          - EFSId
+          - SecurityGroupId
+          - EFSSubnetId
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: "The name of the S3 bucket as sync source."
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9_-]*"
+  DirsToCreate:
+    Type: CommaDelimitedList
+    Default: "stable-diffusion,controlnet,lora,vae"
+    Description: "Comma delimited list of directories to create."
+  EFSId:
+    Description: "The ID of the EFS file system to copy data to."
+    Type: String
+  SecurityGroupId:
+    Description: "Security group to be used by DataSync for the EFS location."
+    Type: AWS::EC2::SecurityGroup::Id
+  EFSSubnetId:
+    Description: "The Subnet ID to use for the EFS file system."
+    Type: AWS::EC2::Subnet::Id
+
+Resources:
+  S3CustomResource:
+    Type: Custom::S3CustomResource
+    Properties:
+      ServiceToken: !GetAtt AWSLambdaFunction.Arn
+      the_bucket: !Ref BucketName
+      dirs_to_create: !Ref DirsToCreate
+  AWSLambdaFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Description: "Work with S3 Buckets!"
+      FunctionName: !Sub "${AWS::StackName}-${AWS::Region}-lambda"
+      Handler: index.handler
+      Role: !GetAtt AWSLambdaExecutionRole.Arn
+      Timeout: 600
+      Runtime: python3.9
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          def handler(event, context):
+              # Init ...
+              the_event = event['RequestType']
+              print("The event is: ", str(the_event))
+              response_data = {}
+              s_3 = boto3.client('s3')
+              # Retrieve parameters
+              the_bucket = event['ResourceProperties']['the_bucket']
+              dirs_to_create = event['ResourceProperties']['dirs_to_create']
+              try:
+                  if the_event in ('Create', 'Update'):
+                      print("Requested folders: ", str(dirs_to_create))
+                      for dir_name in dirs_to_create:
+                          print("Creating: ", str(dir_name))
+                          s_3.put_object(Bucket=the_bucket,
+                                         Key=(dir_name
+                                              + '/'))
+                  elif the_event == 'Delete':
+                      print("Deleting nothing...")
+                      # b_operator = boto3.resource('s3')
+                      # b_operator.Bucket(str(the_bucket)).objects.all().delete()
+                  # Everything OK... send the signal back
+                  print("Operation successful!")
+                  cfnresponse.send(event,
+                                   context,
+                                   cfnresponse.SUCCESS,
+                                   response_data)
+              except Exception as e:
+                  print("Operation failed...")
+                  print(str(e))
+                  response_data['Data'] = str(e)
+                  cfnresponse.send(event,
+                                   context,
+                                   cfnresponse.FAILED,
+                                   response_data)
+
+  AWSLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: "2012-10-17"
+      Path: "/"
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: arn:aws:logs:*:*:*
+            Version: "2012-10-17"
+          PolicyName: !Sub ${AWS::StackName}-${AWS::Region}-AWSLambda-CW
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:List*
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:s3:::${BucketName}/*
+                  - !Sub arn:aws:s3:::${BucketName}
+            Version: "2012-10-17"
+          PolicyName: !Sub ${AWS::StackName}-${AWS::Region}-AWSLambda-S3
+      RoleName: !Sub ${AWS::StackName}-${AWS::Region}-AWSLambdaExecutionRole
+
+  DataSyncLocationS3:
+    Type: "AWS::DataSync::LocationS3"
+    Properties:
+      S3Config:
+        BucketAccessRoleArn: !GetAtt DataSyncS3Role.Arn
+      S3StorageClass: "STANDARD"
+      S3BucketArn: !Sub arn:aws:s3:::${BucketName}
+
+  DataSyncS3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - datasync.amazonaws.com
+        Version: "2012-10-17"
+      Path: "/service-role/"
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:*
+                Effect: Allow
+                Resource: !Sub arn:aws:s3:::${BucketName}/*
+              - Action:
+                  - s3:*
+                Effect: Allow
+                Resource: !Sub arn:aws:s3:::${BucketName}
+            Version: "2012-10-17"
+          PolicyName: !Sub AWSDataSyncS3BucketAccess-${BucketName}
+      RoleName: !Sub AWSDataSyncS3BucketAccess-${BucketName}
+
+  DataSyncLocationEFS:
+    Type: "AWS::DataSync::LocationEFS"
+    Properties:
+      Ec2Config:
+        SecurityGroupArns:
+          - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:security-group/${SecurityGroupId}
+        SubnetArn: !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:subnet/${EFSSubnetId}
+      EfsFilesystemArn: !Sub arn:${AWS::Partition}:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:file-system/${EFSId}
+
+  TaskLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: "/aws/sddatasync"
+
+  DataSyncTask:
+    Type: "AWS::DataSync::Task"
+    Properties:
+      Name: "sd-sync"
+      SourceLocationArn: !Ref DataSyncLocationS3
+      DestinationLocationArn: !Ref DataSyncLocationEFS
+      CloudWatchLogGroupArn: !GetAtt TaskLogGroup.Arn
+      Options:
+        Atime: "BEST_EFFORT"
+        BytesPerSecond: -1
+        Gid: "INT_VALUE"
+        LogLevel: "TRANSFER"
+        Mtime: "PRESERVE"
+        OverwriteMode: "ALWAYS"
+        PosixPermissions: "PRESERVE"
+        PreserveDeletedFiles: "REMOVE"
+        PreserveDevices: "NONE"
+        TaskQueueing: "ENABLED"
+        TransferMode: "CHANGED"
+        Uid: "INT_VALUE"
+        VerifyMode: "ONLY_FILES_TRANSFERRED"
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - scheduler.amazonaws.com
+        Version: "2012-10-17"
+      Path: "/service-role/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSDataSyncFullAccess"
+      RoleName: serviceroleforscheduler
+
+  DataSyncScheduler:
+    Type: "AWS::Scheduler::Schedule"
+    Properties:
+      Name: "sd-sync-scheduler"
+      Description: ""
+      State: "ENABLED"
+      GroupName: "default"
+      ScheduleExpression: "rate(1 minutes)"
+      ScheduleExpressionTimezone: "Asia/Shanghai"
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: "arn:aws:scheduler:::aws-sdk:datasync:startTaskExecution"
+        Input: !Sub |
+          {
+            "TaskArn": "${DataSyncTask}"
+          }
+        RetryPolicy:
+          MaximumEventAgeInSeconds: 86400
+          MaximumRetryAttempts: 0
+        RoleArn: !GetAtt SchedulerRole.Arn
