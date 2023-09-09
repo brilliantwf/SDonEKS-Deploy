@@ -44,3 +44,8 @@ docker push 544592066775.dkr.ecr.us-east-1.amazonaws.com/sd-on-eks/queue-agent:l
 
 
 helm push sd-on-eks-0.2.0.tgz oci://123456789012.dkr.ecr.us-east-1.amazonaws.com/sd-on-eks/charts/
+
+
+kubectl scale deployment keda-admission-webhooks --replicas=0 -n keda
+kubectl scale deployment keda-operator --replicas=0 -n keda
+kubectl scale deployment keda-operator-metrics-apiserver --replicas=0 -n keda
