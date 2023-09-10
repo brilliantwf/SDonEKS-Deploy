@@ -6,8 +6,9 @@ from tqdm import tqdm
 import os
 
 # 初始化S3客户端
-session = boto3.Session(profile_name='ue1')
-s3 = session.client('s3')
+#session = boto3.Session(profile_name='ue1')
+#s3 = session.client('s3')
+s3 = boto3.client('s3')
 
 # 读取CSV文件
 def read_csv(csv_file):
