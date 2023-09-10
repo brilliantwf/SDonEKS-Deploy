@@ -9,7 +9,8 @@ import json
 #s3 = session.client('s3')
 s3 = boto3.client('s3')
 s3prefix =None
-s3bucket = 'sdoneksdataplanestack-outputs3bucket9fe85b9f-189j0whspmp11'
+s3bucket = 'sdoneksdataplanestack-outputs3bucket9fe85b9f'
+API_URL = "https://7yhwcw2wq.execute-api.us-west-2.amazonaws.com/prod/"
 
 with open('payload1.json', 'r') as p1:
     payload1 = json.load(p1)
@@ -81,7 +82,7 @@ def choose_option(option):
 with gr.Blocks(title="SD-on-EKS Demo") as demo:
     gr.Markdown("# Stable diffusion on EKS API Demo")
     with gr.Tab("输入"):
-        api_url =gr.Textbox(label="API 请求地址",value="https://7yhwcw2wqc.execute-api.us-west-2.amazonaws.com/prod/")
+        api_url =gr.Textbox(label="API 请求地址",value=API_URL)
         inputs = gr.Radio(["txt2img", "img2img", "txt2img with ControlNet", "txt2img with Lora & ControlNet"], label="选择一个选项")
         payload = gr.Textbox(lines=10,label="Payload输入")
         picture_output = gr.HTML("图库")
