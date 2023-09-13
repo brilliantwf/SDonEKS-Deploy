@@ -2,7 +2,6 @@ import boto3
 import gradio as gr
 import requests
 import json
-import time
 
 
 # 设置AWS S3的访问密钥和密钥ID
@@ -11,11 +10,9 @@ import time
 s3 = boto3.client('s3')
 s3bucket =None
 s3prefix =None
-start_time = None
-end_time = None
-total_time = None
 
-API_URL_INPUT = "https://7yhwcw2wqc.execute-api.us-west-2.amazonaws.com/prod/"
+
+API_URL_INPUT = "https://c1544mq3nj.execute-api.us-east-1.amazonaws.com/prod/"
 
 with open('./payload1.json', 'r') as p1:
     payload1 = json.load(p1)
@@ -35,9 +32,6 @@ with open('./payload4.json', 'r') as p4:
 def api_request(api_url, json_input):
     global s3prefix
     global s3bucket
-    global start_time
-    print ("收到请求,开始计时")
-    start_time = time.time()
     #print (json_input)
     try:
         json_data = json.loads(json_input)  # 解析 JSON 数据
@@ -50,7 +44,7 @@ def api_request(api_url, json_input):
         #print ("s3bucket------>",s3bucket)
         div = image_viewer(s3prefix)
         #print ("div------>",div)
-        return div,obj_path,total_time
+        return div,obj_path
     except Exception as e:
         return {"error": str(e)}
 
@@ -66,8 +60,6 @@ def list_objects(prefix):
 
 # 创建图像的HTML标记
 def image_viewer(folder):
-    global end_time
-    global total_time
     image_url = []
     div = ""
     # print ("listobj--->",list_objects(folder))
@@ -81,9 +73,6 @@ def image_viewer(folder):
         # print ("objects ---->",objects)
         # print (prev_len,cur_len)
         while  objects:
-            end_time = time.time()
-            total_time = end_time - start_time
-            print ("任务结束,停止计时,总耗时",total_time,"秒")
             for object_key in objects:
                 if object_key.endswith('.jpg') or object_key.endswith('.jpeg') or object_key.endswith('.png'):
                     image_url.append(s3.generate_presigned_url('get_object', Params={
