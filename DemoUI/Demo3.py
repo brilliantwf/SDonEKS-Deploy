@@ -9,7 +9,7 @@ import botocore
 import traceback
 
 
-API_URL_INPUT = "https://7yhwcw2wqc.execute-api.us-west-2.amazonaws.com/prod/"
+API_URL_INPUT = "https://XXX.execute-api.us-west-2.amazonaws.com/prod/"
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(process)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 from botocore.exceptions import ClientError

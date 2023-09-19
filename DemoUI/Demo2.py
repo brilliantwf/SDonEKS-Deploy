@@ -12,7 +12,7 @@ s3bucket =None
 s3prefix =None
 
 
-API_URL_INPUT = "https://c1544mq3nj.execute-api.us-east-1.amazonaws.com/prod/"
+API_URL_INPUT = "https://XXX.execute-api.us-east-1.amazonaws.com/prod/"
 
 with open('./payload1.json', 'r') as p1:
     payload1 = json.load(p1)
