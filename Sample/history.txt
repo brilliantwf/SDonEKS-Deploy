@@ -12,10 +12,6 @@
    61  kubectl exec -it  sdruntime1-sd-on-eks-sd-webui-inference-api-cb57f64fd-gt48p -c sd-webui-queue-agent -n sdruntime1 /bin/bash
    62  kubectl exec -it  sdruntime2-sd-on-eks-sd-webui-inference-api-5bcf69d9cf-5kqcx -c sd-webui-inference-api -n sdruntime2 /bin/bash
    
-   
-   
-   
-   
    kubectl set image deployment/sdruntime1-sd-on-eks-sd-webui-inference-api sd-webui-queue-agent=public.ecr.aws/bingjiao/inference-api:1b2ee3b -n sdruntime1
    
    kubectl delete pod    sdruntime1-sd-on-eks-sd-webui-inference-api-896444769-p9vhv   -n sdruntime1
