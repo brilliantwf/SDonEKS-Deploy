@@ -89,7 +89,7 @@ dynamicModelRuntime:
       inferenceApi:
         image:
           repository: 341227513845.dkr.ecr.us-west-2.amazonaws.com/sd-on-eks/inference-api
-          tag: abcd1
+          tag: latest
       queueAgent:
         image:
           repository: 341227513845.dkr.ecr.us-west-2.amazonaws.com/sd-on-eks/queue-agent
